@@ -32,6 +32,7 @@ class ExampleHomePage extends StatefulWidget {
 
 class _ExampleHomePageState extends State<ExampleHomePage> {
   static const _data = 'Hello world!';
+  static const _logoAsset = 'assets/logo/logo.png';
 
   int _tab = 0;
   Uint8List? _pngBytes;
@@ -42,38 +43,44 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
     _renderPng();
   }
 
-  QrCodeBuilder _newBuilder() {
-    return switch (_tab) {
-      0 => QrCode.ofSquares(),
-      1 => QrCode.ofCircles(),
-      2 => QrCode.ofRoundedSquares(),
-      _ => QrCode.ofSquares(),
-    };
-  }
-
-  QrCodeBuilder _configureBuilder(QrCodeBuilder builder) {
-    final shaped = switch (_tab) {
-      1 => builder.withShape(QrCodeShapesEnum.circle),
-      2 => builder.withShape(QrCodeShapesEnum.roundedSquare),
-      _ => builder,
-    };
-    return switch (_tab) {
-      0 => shaped.withColor(Colors.black).withSize(8),
-      1 => shaped.withColor(Colors.blue).withSize(8),
-      2 => shaped.withColor(Colors.green).withSize(8),
-      3 => shaped.withGradientColor(Colors.pink, Colors.blue).withSize(8),
-      _ =>
-        shaped
-            .withErrorCorrectionLevel(ErrorCorrectionLevel.high)
-            .withMaskPattern(MaskPattern.pattern101)
-            .withSize(8),
-    };
-  }
+  QrCodeConfig _configForTab() => switch (_tab) {
+    0 => const QrCodeConfig(color: Colors.black, squareSize: 8),
+    1 => const QrCodeConfig(
+      shape: QrCodeShapesEnum.circle,
+      color: Colors.blue,
+      squareSize: 8,
+    ),
+    2 => const QrCodeConfig(
+      shape: QrCodeShapesEnum.roundedSquare,
+      color: Colors.green,
+      squareSize: 8,
+    ),
+    3 => const QrCodeConfig(
+      gradientEnd: Colors.blue,
+      color: Colors.pink,
+      squareSize: 8,
+    ),
+    4 => const QrCodeConfig(
+      errorCorrectionLevel: ErrorCorrectionLevel.high,
+      maskPattern: MaskPattern.pattern101,
+      squareSize: 8,
+    ),
+    _ => const QrCodeConfig(
+      shape: QrCodeShapesEnum.roundedSquare,
+      color: Colors.black,
+      squareSize: 8,
+      logo: AssetImage(_logoAsset),
+      logoWidth: 56,
+      logoHeight: 56,
+      errorCorrectionLevel: ErrorCorrectionLevel.high,
+    ),
+  };
 
   Future<void> _renderPng() async {
-    final bytes = await _configureBuilder(
-      _newBuilder(),
-    ).build(_data).renderToBytes();
+    final bytes = await QrCode.create(
+      data: _data,
+      config: _configForTab(),
+    ).renderToBytes();
     if (mounted) setState(() => _pngBytes = bytes);
   }
 
@@ -91,6 +98,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
               ButtonSegment(value: 2, label: Text('Rounded')),
               ButtonSegment(value: 3, label: Text('Gradient')),
               ButtonSegment(value: 4, label: Text('ECL/Mask')),
+              ButtonSegment(value: 5, label: Text('Logo')),
             ],
             selected: {_tab},
             onSelectionChanged: (value) {
@@ -109,7 +117,7 @@ class _ExampleHomePageState extends State<ExampleHomePage> {
             child: CuteQrCode(
               key: ValueKey(_tab),
               data: _data,
-              builder: _configureBuilder,
+              config: _configForTab(),
             ),
           ),
         ],

@@ -1,10 +1,15 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:flutter/painting.dart' show ImageProvider;
 
 import 'color/default_color_function.dart';
 import 'color/qr_code_color_function.dart';
 import 'internals/qr_code_square.dart';
-import 'qr_code_builder.dart';
+import 'qr_code_config.dart';
+import 'qr_code_create.dart';
 import 'qr_code_hook.dart';
+import 'qr_code_shapes_enum.dart';
 import 'raw/qr_code_enums.dart';
 import 'raw/qr_code_processor.dart';
 import 'raw/qr_code_raw_data.dart';
@@ -28,7 +33,9 @@ class QrCode {
     this.maskPattern = MaskPattern.pattern000,
     QrCodeHook? doBefore,
     QrCodeHook? doAfter,
-    this._logoBytes,
+    this.logoProvider,
+    this.logoWidth,
+    this.logoHeight,
   }) : colorFn = colorFn ?? DefaultColorFunction(),
        shapeFn = shapeFn ?? DefaultShapeFunction(squareSize, innerSpace: 0),
        graphicsFactory = graphicsFactory ?? QrCodeGraphicsFactory(),
@@ -52,38 +59,87 @@ class QrCode {
   }
 
   static const int defaultSquareSize = QrCodeProcessor.defaultCellSize;
+
   static const int defaultQrCodeSize = 0;
+
   static const int defaultXOffset = 0;
+
   static const int defaultYOffset = 0;
 
   final String data;
+
   final int xOffset;
+
   final int yOffset;
+
   final QrCodeColorFunction colorFn;
+
   final QrCodeShapeFunction shapeFn;
+
   final QrCodeGraphicsFactory graphicsFactory;
+
   final ErrorCorrectionLevel errorCorrectionLevel;
+
   late final int informationDensity;
+
   final MaskPattern maskPattern;
 
   late int squareSize;
+
   late QrCodeProcessor qrCodeProcessor;
+
   late QrCodeRawData rawData;
+
   late int canvasSize;
+
   late QrCodeGraphics graphics;
 
   final QrCodeHook _doBefore;
+
   final QrCodeHook _doAfter;
-  final Uint8List? _logoBytes;
 
-  static QrCodeBuilder ofSquares() => QrCodeBuilder.ofSquares();
+  final ImageProvider? logoProvider;
 
-  static QrCodeBuilder ofCircles() => QrCodeBuilder.ofCircles();
+  final double? logoWidth;
 
-  static QrCodeBuilder ofRoundedSquares() => QrCodeBuilder.ofRoundedSquares();
+  final double? logoHeight;
 
-  static QrCodeBuilder ofCustomShape(QrCodeShapeFunction customShapeFunction) =>
-      QrCodeBuilder.ofCustomShape(customShapeFunction);
+  ui.Image? resolvedLogo;
+
+  int? logoDrawWidth;
+
+  int? logoDrawHeight;
+
+  static QrCode create({required String data, QrCodeConfig config = const QrCodeConfig()}) =>
+      assembleQrCode(data: data, config: config);
+
+  static QrCode squares({required String data, QrCodeConfig config = const QrCodeConfig()}) =>
+      create(
+        data: data,
+        config: config.copyWith(shape: QrCodeShapesEnum.square),
+      );
+
+  static QrCode circles({required String data, QrCodeConfig config = const QrCodeConfig()}) =>
+      create(
+        data: data,
+        config: config.copyWith(shape: QrCodeShapesEnum.circle),
+      );
+
+  static QrCode roundedSquares({
+    required String data,
+    QrCodeConfig config = const QrCodeConfig(),
+  }) => create(
+    data: data,
+    config: config.copyWith(shape: QrCodeShapesEnum.roundedSquare),
+  );
+
+  static QrCode custom({required String data, required QrCodeConfig config}) {
+    assert(config.shapeFunction != null, 'QrCode.custom requires config.shapeFunction');
+    return create(
+      data: data,
+      config: config.copyWith(shape: QrCodeShapesEnum.custom),
+    );
+  }
 
   QrCode resize(int size) {
     canvasSize = size;
@@ -103,9 +159,13 @@ class QrCode {
   }
 
   Future<void> prepare() async {
-    if (_logoBytes != null) {
-      await graphics.cacheImage(_logoBytes);
-    }
+    final provider = logoProvider;
+    if (provider == null) return;
+
+    final image = await QrCodeGraphics.resolveImageProvider(provider);
+    resolvedLogo = image;
+    logoDrawWidth = (logoWidth ?? image.width.toDouble()).round();
+    logoDrawHeight = (logoHeight ?? image.height.toDouble()).round();
   }
 
   QrCodeGraphics render({QrCodeGraphics? qrCodeGraphics, int? xOffset, int? yOffset}) {

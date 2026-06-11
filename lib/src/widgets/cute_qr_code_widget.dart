@@ -3,15 +3,20 @@ import 'dart:typed_data';
 import 'package:flutter/widgets.dart';
 
 import '../qr_code.dart';
-import '../qr_code_builder.dart';
+import '../qr_code_config.dart';
 import 'qr_code_painter.dart';
 
 class CuteQrCode extends StatefulWidget {
-  const CuteQrCode({super.key, required this.data, this.builder, this.qrCode, this.size})
-    : assert(qrCode != null || data != null);
+  const CuteQrCode({
+    super.key,
+    required this.data,
+    this.config = const QrCodeConfig(),
+    this.qrCode,
+    this.size,
+  }) : assert(qrCode != null || data != null);
 
   final String? data;
-  final QrCodeBuilder Function(QrCodeBuilder builder)? builder;
+  final QrCodeConfig config;
   final QrCode? qrCode;
   final double? size;
 
@@ -34,16 +39,14 @@ class _CuteQrCodeState extends State<CuteQrCode> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.data != widget.data ||
         oldWidget.qrCode != widget.qrCode ||
-        oldWidget.builder != widget.builder) {
+        oldWidget.config != widget.config) {
       _initQrCode();
     }
   }
 
   void _initQrCode() {
     _prepared = false;
-    _qrCode =
-        widget.qrCode ??
-        (widget.builder ?? (b) => b)(QrCodeBuilder.ofSquares()).build(widget.data!);
+    _qrCode = widget.qrCode ?? QrCode.create(data: widget.data!, config: widget.config);
     _prepare();
   }
 
@@ -76,10 +79,7 @@ class _CuteQrCodeState extends State<CuteQrCode> {
   }
 }
 
-Future<Uint8List> cuteQrCodeToPng(
-  String data, {
-  QrCodeBuilder Function(QrCodeBuilder builder)? builder,
-}) async {
-  final qr = (builder ?? (b) => b)(QrCodeBuilder.ofSquares()).build(data);
+Future<Uint8List> cuteQrCodeToPng(String data, {QrCodeConfig config = const QrCodeConfig()}) async {
+  final qr = QrCode.create(data: data, config: config);
   return qr.renderToBytes();
 }

@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+
+import 'package:flutter/painting.dart'
+    show ImageConfiguration, ImageInfo, ImageProvider, ImageStreamListener;
 
 class QrCodeGraphics {
   QrCodeGraphics(this.width, this.height) {
@@ -194,5 +198,25 @@ class QrCodeGraphics {
     final codec = await ui.instantiateImageCodec(rawData);
     final frame = await codec.getNextFrame();
     _imageCache[rawData] = frame.image;
+  }
+
+  static Future<ui.Image> resolveImageProvider(ImageProvider provider) async {
+    final completer = Completer<ui.Image>();
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (ImageInfo info, bool _) {
+        if (!completer.isCompleted) completer.complete(info.image);
+        stream.removeListener(listener);
+      },
+      onError: (Object error, StackTrace? stackTrace) {
+        if (!completer.isCompleted) {
+          completer.completeError(error, stackTrace);
+        }
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
+    return completer.future;
   }
 }

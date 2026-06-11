@@ -7,16 +7,16 @@ void main() {
 
   group('QrCode encoding', () {
     test('encodes hello world matrix', () {
-      final qr = QrCode.ofSquares().withSize(10).build('Hello world!');
+      final qr = QrCode.create(data: 'Hello world!', config: const QrCodeConfig(squareSize: 10));
       expect(qr.rawData.length, greaterThan(0));
       expect(qr.rawData.length, qr.rawData.first.length);
     });
 
     test('renderToBytes returns PNG header', () async {
-      final qr = QrCode.ofRoundedSquares()
-          .withColor(Colors.blue)
-          .withSize(10)
-          .build('Hello world!');
+      final qr = QrCode.roundedSquares(
+        data: 'Hello world!',
+        config: const QrCodeConfig(color: Colors.blue, squareSize: 10),
+      );
       final bytes = await qr.renderToBytes();
       expect(bytes.length, greaterThan(8));
       expect(bytes[0], 0x89);
@@ -33,21 +33,31 @@ void main() {
     });
   });
 
-  group('QrCodeBuilder', () {
-    test('gradient builder uses linear color function', () {
-      final qr = QrCode.ofSquares().withGradientColor(Colors.blue, Colors.red).build('test');
+  group('QrCodeConfig', () {
+    test('gradient config uses linear color function', () {
+      final qr = QrCode.create(
+        data: 'test',
+        config: const QrCodeConfig(gradientEnd: Colors.red, color: Colors.blue),
+      );
       expect(qr.colorFn, isA<LinearGradientColorFunction>());
     });
 
+    test('copyWith overrides fields', () {
+      const base = QrCodeConfig(squareSize: 8);
+      final updated = base.copyWith(color: Colors.green, squareSize: 12);
+      expect(updated.color, Colors.green);
+      expect(updated.squareSize, 12);
+    });
+
     test('fitIntoArea adjusts square size', () {
-      final qr = QrCode.ofCircles().withSize(25).build('fit');
+      final qr = QrCode.circles(data: 'fit', config: const QrCodeConfig(squareSize: 25));
       qr.fitIntoArea(200, 200);
       expect(qr.squareSize, lessThan(25));
       expect(qr.canvasSize, 200);
     });
 
     test('repeated fitIntoArea and render still draws', () {
-      final qr = QrCode.ofSquares().withSize(8).build('Hello');
+      final qr = QrCode.create(data: 'Hello', config: const QrCodeConfig(squareSize: 8));
       qr.fitIntoArea(200, 200);
       qr.render();
       expect(qr.graphics.changed(), isTrue);

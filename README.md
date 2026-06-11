@@ -10,12 +10,12 @@ Pure Dart/Flutter QR code generator ported from [qrcode-kotlin](https://github.c
 
 - **Module shapes** — square, circle, and rounded-square modules
 - **Colors** — solid foreground/background, transparent backgrounds, linear gradients
-- **Logo overlay** — center image with optional clear area behind the logo
+- **Logo overlay** — center `ImageProvider` with optional clear area behind the logo
 - **Encoding options** — error correction levels and mask patterns
 - **PNG export** — `renderToBytes()` and `cuteQrCodeToPng()`
 - **Flutter widgets** — `CuteQrCode` for live UI and `QrCodePainter` for custom painting
 - **Low-level API** — `QrCodeProcessor` for direct matrix encoding and rendering
-- **API parity** — public API mirrors qrcode-kotlin `QRCode` / `QRCodeBuilder`
+- **Dart-style API** — `QrCodeConfig` + `data` / `config` entry points
 
 ## Installation
 
@@ -41,146 +41,131 @@ import 'package:cute_qr_code/cute_qr_code.dart';
 import 'package:flutter/material.dart';
 
 Future<void> generateQr() async {
-  final qr = QrCode.ofRoundedSquares()
-      .withColor(Colors.blue)
-      .withSize(10)
-      .build('Hello world!');
+  final qr = QrCode.roundedSquares(
+    data: 'Hello world!',
+    config: const QrCodeConfig(color: Colors.blue, squareSize: 10),
+  );
 
   final pngBytes = await qr.renderToBytes();
   // Use pngBytes with Image.memory, save to file, etc.
 }
 ```
 
-## Module shapes
+## Creating QR codes
 
-Choose a factory method, then chain builder options and call `build(data)`:
+All high-level creation uses `data` plus an optional `QrCodeConfig`:
 
 ```dart
-// Square modules (default)
-QrCode.ofSquares().withColor(Colors.black).withSize(8).build('Square');
+// Generic (uses config.shape)
+QrCode.create(
+  data: 'Hello',
+  config: const QrCodeConfig(color: Colors.black, squareSize: 8),
+);
 
-// Circle modules
-QrCode.ofCircles().withColor(Colors.blue).withSize(8).build('Circle');
-
-// Rounded-square modules
-QrCode.ofRoundedSquares()
-    .withColor(Colors.green)
-    .withSize(8)
-    .withRadius(4) // optional; auto-calculated when omitted
-    .build('Rounded');
-
-// Custom shape function
-QrCode.ofCustomShape(myShapeFunction).withSize(8).build('Custom');
+// Shape-specific factories (override config.shape)
+QrCode.squares(data: '...', config: const QrCodeConfig(color: Colors.black));
+QrCode.circles(data: '...', config: const QrCodeConfig(color: Colors.blue));
+QrCode.roundedSquares(
+  data: '...',
+  config: const QrCodeConfig(color: Colors.green, radius: 4),
+);
+QrCode.custom(
+  data: '...',
+  config: QrCodeConfig(shapeFunction: myShapeFn),
+);
 ```
 
 | Factory | Description |
 |---------|-------------|
-| `QrCode.ofSquares()` | Standard square modules |
-| `QrCode.ofCircles()` | Circular modules |
-| `QrCode.ofRoundedSquares()` | Rounded-corner square modules |
-| `QrCode.ofCustomShape(fn)` | Fully custom `QrCodeShapeFunction` |
-
-You can also switch shape on an existing builder with `withShape(QrCodeShapesEnum.circle)`.
+| `QrCode.create` | Uses `config.shape` |
+| `QrCode.squares` | Square modules |
+| `QrCode.circles` | Circular modules |
+| `QrCode.roundedSquares` | Rounded-corner modules |
+| `QrCode.custom` | Requires `config.shapeFunction` |
 
 ## Colors
 
-Colors use Flutter's native `Color` type. Import Material for named colors:
+Colors use Flutter's native `Color` type:
 
 ```dart
-import 'package:flutter/material.dart';
-
-QrCode.ofSquares()
-    .withColor(Colors.black)                    // foreground
-    .withBackgroundColor(Colors.white)          // background (default: transparent)
-    .build('Colored');
+QrCode.create(
+  data: 'Colored',
+  config: const QrCodeConfig(
+    color: Colors.black,
+    backgroundColor: Colors.white,
+  ),
+);
 ```
 
 ### Hex strings
 
-Use `QrColorUtils.css()` for CSS-style hex values (equivalent to KMP `Colors.css("#cc0000")`):
-
 ```dart
-QrCode.ofSquares()
-    .withColor(QrColorUtils.css('#00BFFF'))
-    .withBackgroundColor(QrColorUtils.css('#FFFFFF'))
-    .build('Hex colors');
+QrCode.create(
+  data: 'Hex',
+  config: QrCodeConfig(
+    color: QrColorUtils.css('#00BFFF'),
+    backgroundColor: QrColorUtils.css('#FFFFFF'),
+  ),
+);
 ```
-
-You can also construct colors directly: `Color(0xFF00BFFF)`.
 
 ### Gradients
 
 ```dart
-QrCode.ofSquares()
-    .withGradientColor(Colors.pink, Colors.blue) // vertical by default
-    .build('Vertical gradient');
-
-QrCode.ofSquares()
-    .withGradientColor(Colors.pink, Colors.blue, vertical: false)
-    .build('Horizontal gradient');
+QrCode.create(
+  data: 'Gradient',
+  config: const QrCodeConfig(
+    color: Colors.pink,
+    gradientEnd: Colors.blue,
+    gradientVertical: true,
+  ),
+);
 ```
 
 ## Logo overlay
 
-Embed a center logo from PNG bytes. When `clearLogoArea` is `true` (default), modules under the logo are skipped so the image stays readable:
+Pass a Flutter `ImageProvider` for the center logo:
 
 ```dart
-import 'dart:typed_data';
-
-final logoBytes = ...; // Uint8List of PNG/JPEG bytes
-
-final qr = QrCode.ofSquares()
-    .withColor(Colors.black)
-    .withSize(10)
-    .withLogo(logoBytes, 64, 64, clearLogoArea: true)
-    .build('https://example.com');
+QrCode.create(
+  data: 'https://example.com',
+  config: const QrCodeConfig(
+    logo: AssetImage('assets/logo.png'),
+    logoWidth: 64,
+    logoHeight: 64,
+    clearLogoArea: true,
+  ),
+);
 ```
+
+`logoWidth` / `logoHeight` are optional — when omitted, the resolved image dimensions are used. The logo is resolved asynchronously in `prepare()` / `renderToBytes()`.
+
+Supported providers include `AssetImage`, `NetworkImage`, and `MemoryImage`.
 
 ## Error correction and mask patterns
 
 ```dart
-QrCode.ofSquares()
-    .withErrorCorrectionLevel(ErrorCorrectionLevel.high)
-    .withMaskPattern(MaskPattern.pattern101)
-    .build('Robust QR');
-```
-
-| `ErrorCorrectionLevel` | Approx. recovery |
-|------------------------|------------------|
-| `low` | ~7% |
-| `medium` | ~15% |
-| `high` | ~25% |
-| `veryHigh` | ~30% |
-
-Mask patterns: `MaskPattern.pattern000` through `MaskPattern.pattern111`.
-
-Override information density manually when needed:
-
-```dart
-QrCode.ofSquares()
-    .withInformationDensity(4)
-    .build('Long text...');
+QrCode.create(
+  data: 'Robust QR',
+  config: const QrCodeConfig(
+    errorCorrectionLevel: ErrorCorrectionLevel.high,
+    maskPattern: MaskPattern.pattern101,
+  ),
+);
 ```
 
 ## Widget usage
 
-Use `CuteQrCode` to render a QR code directly in your widget tree. It scales to fill the available space (1:1 aspect ratio).
-
 ```dart
-SizedBox(
-  height: 240,
-  child: CuteQrCode(
-    data: 'Hello',
-    builder: _configureBuilder,
+CuteQrCode(
+  key: ValueKey(tabIndex),
+  data: 'Hello',
+  config: const QrCodeConfig(
+    shape: QrCodeShapesEnum.circle,
+    color: Colors.blue,
+    squareSize: 8,
   ),
 )
-
-QrCodeBuilder _configureBuilder(QrCodeBuilder builder) {
-  return builder
-      .withShape(QrCodeShapesEnum.circle)
-      .withColor(Colors.blue)
-      .withSize(8);
-}
 ```
 
 ### Widget parameters
@@ -188,19 +173,14 @@ QrCodeBuilder _configureBuilder(QrCodeBuilder builder) {
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `data` | `String?` | Text to encode (required unless `qrCode` is provided) |
-| `builder` | `QrCodeBuilder Function(QrCodeBuilder)?` | Configures shape, color, size, etc. |
-| `qrCode` | `QrCode?` | Pre-built `QrCode` instance (skips builder) |
+| `config` | `QrCodeConfig` | Style and encoding options |
+| `qrCode` | `QrCode?` | Pre-built instance (skips `create`) |
 | `size` | `double?` | Fixed width/height in logical pixels |
+| `key` | `Key?` | Use when switching configs (e.g. tab changes) |
 
-### Tips
-
-- Pass a **stable method reference** for `builder` (e.g. `_configureBuilder`), not an inline closure. Inline closures create a new function on every parent rebuild, causing unnecessary re-initialization.
-- When switching styles by tab or index, use `key: ValueKey(tabIndex)` to recreate the widget cleanly.
-- `CuteQrCode` starts from `QrCodeBuilder.ofSquares()` internally; use `builder.withShape(...)` for circle or rounded shapes.
+`CuteQrCode` compares `config` with `==` in `didUpdateWidget`. Reuse `const QrCodeConfig(...)` or `copyWith` for stable updates.
 
 ### Custom painting
-
-For full control, use `QrCodePainter` inside your own `CustomPaint`:
 
 ```dart
 CustomPaint(
@@ -211,61 +191,36 @@ CustomPaint(
 
 ## PNG export
 
-### From a `QrCode` instance
-
 ```dart
-final bytes = await qr.renderToBytes();           // PNG (default)
-final bytes = await qr.renderToBytes(format: 'PNG');
-```
+final bytes = await QrCode.create(data: 'Hello', config: config).renderToBytes();
 
-### Convenience helper
-
-```dart
 final bytes = await cuteQrCodeToPng(
   'Hello',
-  builder: (b) => b.withColor(Colors.black).withSize(10),
+  config: const QrCodeConfig(color: Colors.black, squareSize: 10),
 );
 ```
 
 ## Advanced customization
 
-### Custom color and shape functions
-
-Implement `QrCodeColorFunction` or `QrCodeShapeFunction`, then:
-
 ```dart
-QrCode.ofSquares()
-    .withCustomColorFunction(myColorFn)
-    .withCustomShapeFunction(myShapeFn)
-    .build('Custom');
+QrCode.create(
+  data: 'Custom',
+  config: QrCodeConfig(
+    colorFunction: myColorFn,
+    shapeFunction: myShapeFn,
+    onBeforeRender: (qr, canvas) { /* ... */ },
+    onAfterRender: (qr, canvas) { /* ... */ },
+  ),
+);
 ```
 
-### Render hooks
-
-Run code before or after the QR modules are drawn:
-
 ```dart
-QrCode.ofSquares()
-    .withBeforeRenderAction((qr, canvas) { /* ... */ })
-    .withAfterRenderAction((qr, canvas) { /* ... */ })
-    .build('Hooks');
-```
-
-### Resize and fit
-
-After building, adjust output dimensions:
-
-```dart
-final qr = QrCode.ofSquares().withSize(8).build('Fit');
-
-qr.fitIntoArea(200, 200); // scales modules to fit a 200×200 area
-qr.resize(300);           // fixed 300×300 canvas
+final qr = QrCode.create(data: 'Fit', config: const QrCodeConfig(squareSize: 8));
+qr.fitIntoArea(200, 200);
 await qr.renderToBytes();
 ```
 
 ## Low-level API
-
-For plain encoding without the builder decorators:
 
 ```dart
 final processor = QrCodeProcessor('Hello QRCode!');
@@ -273,65 +228,46 @@ final graphics = processor.render(cellSize: 25, darkColor: Colors.black);
 final bytes = await graphics.getBytes();
 ```
 
-Access the raw matrix via `processor.encode()` or inspect `QrCode.rawData` on a built instance.
+## QrCodeConfig reference
 
-## QrCodeBuilder API reference
-
-| Method | Description |
-|--------|-------------|
-| `withShape(shape)` | Set module shape enum |
-| `withSize(size)` | Module size in pixels |
-| `withColor(color)` | Foreground color |
-| `withBackgroundColor(color)` | Background color |
-| `withGradientColor(start, end, {vertical})` | Linear gradient foreground |
-| `withRadius(radius)` | Corner radius for rounded squares |
-| `withInnerSpacing([spacing])` | Gap between modules |
-| `withLogo(bytes, w, h, {clearLogoArea})` | Center logo image |
-| `withErrorCorrectionLevel(ecl)` | Error correction level |
-| `withMaskPattern(pattern)` | Mask pattern |
-| `withInformationDensity(density)` | Override auto density |
-| `withCanvasSize(size)` | Fixed canvas size |
-| `withMargin(margin)` | Quiet zone margin |
-| `withXOffset(x)` / `withYOffset(y)` | Draw offset |
-| `withCustomColorFunction(fn)` | Custom color logic |
-| `withCustomShapeFunction(fn)` | Custom shape logic |
-| `withBeforeRenderAction(fn)` | Pre-render hook |
-| `withAfterRenderAction(fn)` | Post-render hook |
-| `withGraphicsFactory(factory)` | Custom graphics backend |
-| `build(data)` | Create `QrCode` instance |
-
-Static factories on `QrCodeBuilder`: `ofSquares()`, `ofCircles()`, `ofRoundedSquares()`, `ofCustomShape(fn)`.
-
-Convenience aliases on `QrCode`: `QrCode.ofSquares()`, `ofCircles()`, `ofRoundedSquares()`, `ofCustomShape(fn)`.
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `shape` | `QrCodeShapesEnum` | `square` | Module shape |
+| `color` | `Color` | `Colors.black` | Foreground color |
+| `backgroundColor` | `Color` | `transparent` | Background color |
+| `gradientEnd` | `Color?` | `null` | Enables gradient when set |
+| `gradientVertical` | `bool` | `true` | Gradient direction |
+| `squareSize` | `int` | `25` | Module size in pixels |
+| `radius` | `int?` | auto | Rounded-square corner radius |
+| `innerSpacing` | `int?` | auto | Gap between modules |
+| `logo` | `ImageProvider?` | `null` | Center logo image |
+| `logoWidth` | `double?` | image width | Logo draw width |
+| `logoHeight` | `double?` | image height | Logo draw height |
+| `clearLogoArea` | `bool` | `true` | Skip modules under logo |
+| `errorCorrectionLevel` | `ErrorCorrectionLevel` | `low` | Error correction |
+| `maskPattern` | `MaskPattern` | `pattern000` | Mask pattern |
+| `informationDensity` | `int?` | auto | Override auto density |
+| `canvasSize` | `int` | `0` | Fixed canvas (0 = auto) |
+| `margin` | `int` | `0` | Quiet zone margin |
+| `xOffset` / `yOffset` | `int` | `0` | Draw offset |
+| `colorFunction` | `QrCodeColorFunction?` | `null` | Custom color logic |
+| `shapeFunction` | `QrCodeShapeFunction?` | `null` | Custom shape logic |
+| `graphicsFactory` | `QrCodeGraphicsFactory?` | `null` | Custom graphics backend |
+| `onBeforeRender` | callback | `null` | Pre-render hook |
+| `onAfterRender` | callback | `null` | Post-render hook |
 
 ## Example app
-
-The `example/` directory demonstrates all major features:
 
 ```bash
 cd example
 flutter run
 ```
 
-The demo includes five tabs:
-
-| Tab | Demonstrates |
-|-----|--------------|
-| Square | Black square modules |
-| Circle | Blue circle modules |
-| Rounded | Green rounded-square modules |
-| Gradient | Pink-to-blue gradient |
-| ECL/Mask | High error correction + mask pattern 101 |
-
-Each tab shows both a PNG preview (`renderToBytes`) and a live `CuteQrCode` widget.
+Five tabs demonstrate square, circle, rounded, gradient, and ECL/mask styles using `QrCodeConfig`.
 
 ## Relationship to qrcode-kotlin
 
-`cute_qr_code` is a faithful port of the qrcode-kotlin `commonMain` module to pure Dart, using `dart:ui` Canvas for rendering. The builder API, shape functions, color functions, and encoding internals follow the same design. Differences:
-
-- Colors use Flutter `Color` / Material `Colors` instead of a custom `Colors` class
-- Hex colors via `QrColorUtils.css()` instead of `Colors.css()`
-- Flutter-specific exports: `CuteQrCode`, `QrCodePainter`, `cuteQrCodeToPng()`
+`cute_qr_code` ports qrcode-kotlin encoding and rendering internals. The public Dart API uses `QrCodeConfig` instead of the Kotlin fluent builder. Colors use Flutter `Color` / `QrColorUtils.css()` for hex values.
 
 ## License
 

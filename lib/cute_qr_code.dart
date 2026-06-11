@@ -4,7 +4,7 @@ export 'src/color/qr_code_color_function.dart';
 export 'src/exception/insufficient_information_density_exception.dart';
 export 'src/internals/qr_code_square.dart' show QrCodeSquare, QrCodeSquareType;
 export 'src/qr_code.dart';
-export 'src/qr_code_builder.dart';
+export 'src/qr_code_config.dart';
 export 'src/qr_code_hook.dart';
 export 'src/qr_code_shapes_enum.dart';
 export 'src/raw/qr_code_enums.dart';
