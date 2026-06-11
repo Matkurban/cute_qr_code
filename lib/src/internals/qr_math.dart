@@ -1,0 +1,48 @@
+class QrMath {
+  QrMath._();
+
+  static final List<int> _expTable = List<int>.filled(256, 0);
+  static final List<int> _logTable = List<int>.filled(256, 0);
+  static bool _initialized = false;
+
+  static void _ensureInitialized() {
+    if (_initialized) return;
+    for (var i = 0; i <= 7; i++) {
+      _expTable[i] = 1 << i;
+    }
+    for (var i = 8; i <= 255; i++) {
+      _expTable[i] = _expTable[i - 4] ^ _expTable[i - 5] ^ _expTable[i - 6] ^ _expTable[i - 8];
+    }
+    for (var i = 0; i <= 254; i++) {
+      _logTable[_expTable[i]] = i;
+    }
+    _initialized = true;
+  }
+
+  static int glog(int n) {
+    _ensureInitialized();
+    return _logTable[n];
+  }
+
+  static int gexp(int n) {
+    _ensureInitialized();
+    var i = n;
+    while (i < 0) {
+      i += 255;
+    }
+    while (i >= 256) {
+      i -= 255;
+    }
+    return _expTable[i];
+  }
+
+  /// Returns true when the two rectangles do NOT intersect.
+  static bool rectsIntersect(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
+    final x1End = x1 + w1;
+    final y1End = y1 + h1;
+    final x2End = x2 + w2;
+    final y2End = y2 + h2;
+
+    return x1End < x2 || x1 > x2End || y1End < y2 || y1 > y2End;
+  }
+}
