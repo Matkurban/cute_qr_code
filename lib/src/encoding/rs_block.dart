@@ -1,5 +1,7 @@
-import '../raw/qr_code_enums.dart';
+import 'qr_code_enums.dart';
 
+/// Reed–Solomon block layout for a QR version and ECL.
+/// 指定 QR 版本与纠错等级下的 RS 块布局。
 class RsBlock {
   const RsBlock(this.totalCount, this.dataCount);
 

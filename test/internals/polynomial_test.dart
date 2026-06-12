@@ -1,5 +1,5 @@
-import 'package:cute_qr_code/src/internals/polynomial.dart';
-import 'package:cute_qr_code/src/internals/qr_math.dart';
+import 'package:cute_qr_code/src/encoding/polynomial.dart';
+import 'package:cute_qr_code/src/encoding/qr_math.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 List<int> inputArray(List<int> values) => values.map(QrMath.gexp).toList();

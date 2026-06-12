@@ -2,7 +2,7 @@
 
 # cute_qr_code
 
-**版本 1.0.0**
+**版本 1.1.0**
 
 基于 [qrcode-kotlin](https://github.com/g0dkar/qrcode-kotlin) 的纯 Dart/Flutter 二维码生成库。支持自定义模块形状、颜色、渐变和 Logo，无原生依赖，无需 Platform Channel。
 
@@ -21,7 +21,7 @@
 
 ```yaml
 dependencies:
-  cute_qr_code: ^1.0.0
+  cute_qr_code: ^1.1.0
 ```
 
 ```bash
@@ -149,14 +149,19 @@ QrCode.create(
 
 ## Widget 用法
 
+`CuteQrCode` 会按父容器约束自适应，取宽高中较短的一边绘制正方形（与 `PrettyQrView` 类似）。放在 `SizedBox`、`Expanded` 等有限约束容器内即可，不必固定 `size`。
+
 ```dart
-CuteQrCode(
-  key: ValueKey(tabIndex),
-  data: 'Hello',
-  config: const QrCodeConfig(
-    shape: QrCodeShapesEnum.circle,
-    color: Colors.blue,
-    squareSize: 8,
+SizedBox(
+  width: 200,
+  height: 120,
+  child: CuteQrCode.data(
+    data: 'Hello',
+    config: const QrCodeConfig(
+      shape: QrCodeShapesEnum.circle,
+      color: Colors.blue,
+    ),
+    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
   ),
 )
 ```
@@ -168,10 +173,11 @@ CuteQrCode(
 | `data` | `String?` | 要编码的文本 |
 | `config` | `QrCodeConfig` | 样式与编码配置 |
 | `qrCode` | `QrCode?` | 预构建实例 |
-| `size` | `double?` | 固定宽高 |
+| `size` | `double?` | 可选固定宽高 |
+| `errorBuilder` | `ImageErrorWidgetBuilder?` | 编码失败时的回调，避免红屏 |
 | `key` | `Key?` | 切换配置时使用（如 Tab） |
 
-`CuteQrCode` 在 `didUpdateWidget` 中通过 `config ==` 判断是否需要重建。
+推荐使用 `CuteQrCode.data()`。Widget 模式下 `config.squareSize` 不参与布局（由容器决定尺寸），仍用于 `renderToBytes()` / PNG 导出。
 
 ## PNG 导出
 
@@ -214,9 +220,10 @@ QrCode.create(
 | `logoWidth` | `double?` | 图片宽度 | Logo 绘制宽度 |
 | `logoHeight` | `double?` | 图片高度 | Logo 绘制高度 |
 | `clearLogoArea` | `bool` | `true` | 清除 Logo 下模块 |
-| `errorCorrectionLevel` | `ErrorCorrectionLevel` | `low` | 纠错等级 |
+| `errorCorrectionLevel` | `ErrorCorrectionLevel` | `low` | 纠错等级（`low`=L，`medium`=M，`high`=Q，`veryHigh`=H） |
 | `maskPattern` | `MaskPattern` | `pattern000` | 掩码模式 |
-| `informationDensity` | `int?` | 自动 | 信息密度 |
+| `informationDensity` / `typeNumber` | `int?` | 自动 | QR 版本 1–40；`null` 或 `0` 为自动 |
+| `strictTypeNumber` | `bool` | `false` | 为 `true` 时，显式版本过小不会自动升级 |
 | `canvasSize` | `int` | `0` | 画布尺寸（0=自动） |
 | `margin` | `int` | `0` | 静默区边距 |
 | `xOffset` / `yOffset` | `int` | `0` | 绘制偏移 |

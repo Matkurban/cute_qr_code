@@ -1,5 +1,5 @@
-import 'package:cute_qr_code/src/internals/bit_buffer.dart';
-import 'package:cute_qr_code/src/internals/qr_data.dart';
+import 'package:cute_qr_code/src/encoding/bit_buffer.dart';
+import 'package:cute_qr_code/src/encoding/qr_data.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

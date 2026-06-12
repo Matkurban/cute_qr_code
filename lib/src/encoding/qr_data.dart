@@ -1,6 +1,8 @@
-import '../raw/qr_code_enums.dart';
+import 'qr_code_enums.dart';
 import 'bit_buffer.dart';
 
+/// Payload segment that writes itself into a [BitBuffer].
+/// 可写入 [BitBuffer] 的载荷数据段。
 abstract class QrData {
   QrData(this.dataType, this.data);
 
@@ -44,6 +46,7 @@ abstract class QrData {
   }
 }
 
+/// 8-bit byte mode payload. 8 位字节模式载荷。
 class Qr8BitByte extends QrData {
   Qr8BitByte(String data) : super(QrCodeDataType.defaultType, data);
 
@@ -60,6 +63,7 @@ class Qr8BitByte extends QrData {
   int length() => _dataBytes.length;
 }
 
+/// Alphanumeric mode payload. 字母数字模式载荷。
 class QrAlphaNum extends QrData {
   QrAlphaNum(String data) : super(QrCodeDataType.upperAlphaNum, data);
 
@@ -108,6 +112,7 @@ class QrAlphaNum extends QrData {
   }
 }
 
+/// Numeric mode payload. 数字模式载荷。
 class QrNumber extends QrData {
   QrNumber(String data) : super(QrCodeDataType.numbers, data);
 

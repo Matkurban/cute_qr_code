@@ -1,17 +1,20 @@
-import 'color/default_color_function.dart';
-import 'color/linear_gradient_color_function.dart';
-import 'color/qr_code_color_function.dart';
-import 'internals/qr_math.dart';
+import '../config/qr_code_config.dart';
+import '../encoding/qr_code_processor.dart';
+import '../encoding/qr_math.dart';
+import '../painting/color/default_color_function.dart';
+import '../painting/color/linear_gradient_color_function.dart';
+import '../painting/color/qr_code_color_function.dart';
+import '../painting/shape/circle_shape_function.dart';
+import '../painting/shape/default_shape_function.dart';
+import '../painting/shape/qr_code_shape_function.dart';
+import '../painting/shape/round_squares_shape_function.dart';
+import '../rendering/qr_code_graphics.dart';
 import 'qr_code.dart';
-import 'qr_code_config.dart';
 import 'qr_code_hook.dart';
 import 'qr_code_shapes_enum.dart';
-import 'render/qr_code_graphics.dart';
-import 'shape/circle_shape_function.dart';
-import 'shape/default_shape_function.dart';
-import 'shape/qr_code_shape_function.dart';
-import 'shape/round_squares_shape_function.dart';
 
+/// Assembles a fully configured [QrCode] from [data] and [config].
+/// 根据 [data] 与 [config] 组装完整配置的 [QrCode]。
 QrCode assembleQrCode({required String data, required QrCodeConfig config}) {
   final squareSize = config.squareSize < 1 ? 1 : config.squareSize;
   final innerSpace = _innerSpaceForShape(config.shape, squareSize, config.innerSpacing);
@@ -82,6 +85,13 @@ QrCode assembleQrCode({required String data, required QrCodeConfig config}) {
     if (userAfter != null) userAfter(qr, canvas);
   }
 
+  final resolvedDensity = QrCodeProcessor.resolveTypeNumber(
+    data: data,
+    errorCorrectionLevel: config.errorCorrectionLevel,
+    requestedType: config.informationDensity,
+    strictTypeNumber: config.strictTypeNumber,
+  );
+
   final qr = QrCode(
     data: data,
     squareSize: squareSize,
@@ -92,7 +102,7 @@ QrCode assembleQrCode({required String data, required QrCodeConfig config}) {
     shapeFn: shapeFn,
     graphicsFactory: config.graphicsFactory,
     errorCorrectionLevel: config.errorCorrectionLevel,
-    informationDensity: config.informationDensity,
+    informationDensity: resolvedDensity,
     maskPattern: config.maskPattern,
     doBefore: beforeFn,
     doAfter: afterFn,

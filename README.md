@@ -2,7 +2,7 @@
 
 # cute_qr_code
 
-**Version 1.0.0**
+**Version 1.1.0**
 
 Pure Dart/Flutter QR code generator ported from [qrcode-kotlin](https://github.com/g0dkar/qrcode-kotlin). Generate aesthetic QR codes with custom module shapes, colors, gradients, and logos — no native dependencies, no platform channels.
 
@@ -23,7 +23,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  cute_qr_code: ^1.0.0
+  cute_qr_code: ^1.1.0
 ```
 
 Then run:
@@ -156,14 +156,19 @@ QrCode.create(
 
 ## Widget usage
 
+`CuteQrCode` scales to the parent box using the shorter side (same idea as `PrettyQrView`). Place it inside `SizedBox`, `Expanded`, or any bounded layout — no fixed `size` required.
+
 ```dart
-CuteQrCode(
-  key: ValueKey(tabIndex),
-  data: 'Hello',
-  config: const QrCodeConfig(
-    shape: QrCodeShapesEnum.circle,
-    color: Colors.blue,
-    squareSize: 8,
+SizedBox(
+  width: 200,
+  height: 120,
+  child: CuteQrCode.data(
+    data: 'Hello',
+    config: const QrCodeConfig(
+      shape: QrCodeShapesEnum.circle,
+      color: Colors.blue,
+    ),
+    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
   ),
 )
 ```
@@ -175,10 +180,11 @@ CuteQrCode(
 | `data` | `String?` | Text to encode (required unless `qrCode` is provided) |
 | `config` | `QrCodeConfig` | Style and encoding options |
 | `qrCode` | `QrCode?` | Pre-built instance (skips `create`) |
-| `size` | `double?` | Fixed width/height in logical pixels |
+| `size` | `double?` | Optional fixed width/height in logical pixels |
+| `errorBuilder` | `ImageErrorWidgetBuilder?` | Called when encoding fails instead of crashing |
 | `key` | `Key?` | Use when switching configs (e.g. tab changes) |
 
-`CuteQrCode` compares `config` with `==` in `didUpdateWidget`. Reuse `const QrCodeConfig(...)` or `copyWith` for stable updates.
+`CuteQrCode.data()` is the recommended entry point. In widgets, `squareSize` in config is ignored for layout (container drives size); it still applies to `renderToBytes()` / PNG export.
 
 ### Custom painting
 
@@ -216,8 +222,7 @@ QrCode.create(
 
 ```dart
 final qr = QrCode.create(data: 'Fit', config: const QrCodeConfig(squareSize: 8));
-qr.fitIntoArea(200, 200);
-await qr.renderToBytes();
+await qr.renderToBytes(); // uses config.squareSize for export resolution
 ```
 
 ## Low-level API
@@ -244,9 +249,10 @@ final bytes = await graphics.getBytes();
 | `logoWidth` | `double?` | image width | Logo draw width |
 | `logoHeight` | `double?` | image height | Logo draw height |
 | `clearLogoArea` | `bool` | `true` | Skip modules under logo |
-| `errorCorrectionLevel` | `ErrorCorrectionLevel` | `low` | Error correction |
+| `errorCorrectionLevel` | `ErrorCorrectionLevel` | `low` | Error correction (`low` = L, `medium` = M, `high` = Q, `veryHigh` = H) |
 | `maskPattern` | `MaskPattern` | `pattern000` | Mask pattern |
-| `informationDensity` | `int?` | auto | Override auto density |
+| `informationDensity` / `typeNumber` | `int?` | auto | QR version 1–40; `null` or `0` = auto minimum |
+| `strictTypeNumber` | `bool` | `false` | When `true`, do not auto-upgrade an explicit `informationDensity` that is too small |
 | `canvasSize` | `int` | `0` | Fixed canvas (0 = auto) |
 | `margin` | `int` | `0` | Quiet zone margin |
 | `xOffset` / `yOffset` | `int` | `0` | Draw offset |

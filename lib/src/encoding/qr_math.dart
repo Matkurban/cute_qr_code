@@ -1,3 +1,5 @@
+/// Galois-field and geometry helpers for QR encoding.
+/// QR 编码用的伽罗瓦域与几何辅助方法。
 class QrMath {
   QrMath._();
 
@@ -37,6 +39,7 @@ class QrMath {
   }
 
   /// Returns true when the two rectangles do NOT intersect.
+  /// 两矩形不相交时返回 true。
   static bool rectsIntersect(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
     final x1End = x1 + w1;
     final y1End = y1 + h1;

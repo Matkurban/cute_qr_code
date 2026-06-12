@@ -1,5 +1,7 @@
 import 'qr_math.dart';
 
+/// Polynomial over GF(256) for Reed–Solomon error correction.
+/// GF(256) 上的多项式，用于 Reed–Solomon 纠错。
 class Polynomial {
   Polynomial(List<int> num, [int shift = 0]) : data = _initData(num, shift);
 

@@ -5,13 +5,20 @@ import 'dart:ui' as ui;
 import 'package:flutter/painting.dart'
     show ImageConfiguration, ImageInfo, ImageProvider, ImageStreamListener;
 
+/// Picture-recorder-backed canvas for QR raster output.
+/// 基于 PictureRecorder 的 QR 光栅输出画布。
 class QrCodeGraphics {
+  /// Creates a graphics buffer of [width] x [height] pixels.
+  /// 创建 [width] x [height] 像素的图形缓冲区。
   QrCodeGraphics(this.width, this.height) {
     _recorder = ui.PictureRecorder();
     _canvas = ui.Canvas(_recorder);
   }
 
+  /// Buffer width in pixels. 缓冲区宽度（像素）。
   final int width;
+
+  /// Buffer height in pixels. 缓冲区高度（像素）。
   final int height;
 
   late ui.PictureRecorder _recorder;
@@ -21,8 +28,11 @@ class QrCodeGraphics {
   final Map<int, ui.Paint> _paintCache = {};
   final Map<Uint8List, ui.Image> _imageCache = {};
 
+  /// Underlying Flutter canvas. 底层 Flutter 画布。
   ui.Canvas get canvas => _canvas;
 
+  /// Whether any draw call modified the buffer since last [reset].
+  /// 自上次 [reset] 以来是否有绘制修改了缓冲区。
   bool changed() => _changed;
 
   void reset() {
@@ -200,6 +210,8 @@ class QrCodeGraphics {
     _imageCache[rawData] = frame.image;
   }
 
+  /// Resolves an [ImageProvider] to a [ui.Image].
+  /// 将 [ImageProvider] 解析为 [ui.Image]。
   static Future<ui.Image> resolveImageProvider(ImageProvider provider) async {
     final completer = Completer<ui.Image>();
     final stream = provider.resolve(ImageConfiguration.empty);

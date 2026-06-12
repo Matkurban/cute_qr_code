@@ -1,3 +1,5 @@
+/// Growable bit stream for QR payload encoding.
+/// 用于 QR 载荷编码的可增长比特流。
 class BitBuffer {
   BitBuffer() {
     buffer = List<int>.filled(_increments, 0);

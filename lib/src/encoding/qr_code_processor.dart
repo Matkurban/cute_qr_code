@@ -1,17 +1,20 @@
-import '../exception/insufficient_information_density_exception.dart';
-import '../internals/bit_buffer.dart';
-import '../internals/polynomial.dart';
-import '../internals/qr_code_setup.dart';
-import '../internals/qr_code_square.dart';
-import '../internals/qr_data.dart';
-import '../internals/qr_util.dart';
-import '../internals/rs_block.dart';
-import '../render/qr_code_graphics.dart';
-import '../render/qr_code_graphics_factory.dart';
+import 'bit_buffer.dart';
+import 'insufficient_information_density_exception.dart';
+import 'polynomial.dart';
+import 'qr_code_setup.dart';
+import 'qr_code_square.dart';
+import 'qr_data.dart';
+import 'qr_util.dart';
+import 'rs_block.dart';
+import '../rendering/qr_code_graphics.dart';
+import '../rendering/qr_code_graphics_factory.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color, Colors;
 import 'qr_code_enums.dart';
 import 'qr_code_raw_data.dart';
 
+/// Encodes payload strings into QR matrices and can render flat graphics.
+/// 将载荷字符串编码为 QR 矩阵，并可渲染为平面图形。
 class QrCodeProcessor {
   QrCodeProcessor(
     this._data, {
@@ -30,7 +33,10 @@ class QrCodeProcessor {
 
   late final QrData _qrCodeData;
 
+  /// Default module size in pixels for raster export. 光栅导出默认模块像素尺寸。
   static const int defaultCellSize = 25;
+
+  /// Maximum QR version (40). 最大 QR 版本号（40）。
   static const int maximumInfoDensity = 40;
   static const int _pad0 = 0xEC;
   static const int _pad1 = 0x11;
@@ -46,22 +52,98 @@ class QrCodeProcessor {
     }
   }
 
-  static int infoDensityForDataAndEcl(
+  /// Smallest QR version (1–40) whose bit capacity fits [data] at [errorCorrectionLevel].
+  /// 在给定纠错等级下，能容纳 [data] 的最小 QR 版本（按 bit 容量计算）。
+  static int minTypeForData(
     String data,
     ErrorCorrectionLevel errorCorrectionLevel, [
     QrCodeDataType? dataType,
   ]) {
-    final resolvedType = dataType ?? QrUtil.getDataType(data);
-    final qrCodeData = _createQrData(resolvedType, data);
-    final dataLength = qrCodeData.length();
+    final resolvedDataType = dataType ?? QrUtil.getDataType(data);
+    final qrCodeData = _createQrData(resolvedDataType, data);
 
     for (var typeNum = 1; typeNum < errorCorrectionLevel.maxTypeNum; typeNum++) {
-      if (dataLength <= QrUtil.getMaxLength(typeNum, resolvedType, errorCorrectionLevel)) {
+      if (_fitsInType(qrCodeData, typeNum, errorCorrectionLevel)) {
         return typeNum;
       }
     }
 
-    return maximumInfoDensity;
+    if (_fitsInType(qrCodeData, maximumInfoDensity, errorCorrectionLevel)) {
+      return maximumInfoDensity;
+    }
+
+    final rsBlocks = RsBlock.getRsBlocks(maximumInfoDensity, errorCorrectionLevel);
+    final buffer = _buildDataBuffer(qrCodeData, maximumInfoDensity);
+    final totalDataCount = rsBlocks.fold<int>(0, (sum, b) => sum + b.dataCount) * 8;
+    throw InsufficientInformationDensityException(
+      'Data exceeds maximum QR capacity at version $maximumInfoDensity '
+      '[neededBits=${buffer.lengthInBits}, maximumBitsForDensityLevel=$totalDataCount].',
+    );
+  }
+
+  static int infoDensityForDataAndEcl(
+    String data,
+    ErrorCorrectionLevel errorCorrectionLevel, [
+    QrCodeDataType? dataType,
+  ]) => minTypeForData(data, errorCorrectionLevel, dataType);
+
+  /// Resolves encode version; [requestedType] null or 0 means auto.
+  /// 解析编码版本；[requestedType] 为 null 或 0 表示自动。
+  static int resolveTypeNumber({
+    required String data,
+    required ErrorCorrectionLevel errorCorrectionLevel,
+    int? requestedType,
+    bool strictTypeNumber = false,
+    QrCodeDataType? dataType,
+  }) {
+    final minType = minTypeForData(data, errorCorrectionLevel, dataType);
+    final auto = requestedType == null || requestedType == 0;
+    if (auto) return minType;
+
+    if (requestedType < minType) {
+      if (strictTypeNumber) {
+        final resolvedDataType = dataType ?? QrUtil.getDataType(data);
+        final qrCodeData = _createQrData(resolvedDataType, data);
+        final rsBlocks = RsBlock.getRsBlocks(requestedType, errorCorrectionLevel);
+        final buffer = _buildDataBuffer(qrCodeData, requestedType);
+        final totalDataCount = rsBlocks.fold<int>(0, (sum, b) => sum + b.dataCount) * 8;
+        throw InsufficientInformationDensityException(
+          'Insufficient Information Density Parameter: $requestedType '
+          '[neededBits=${buffer.lengthInBits}, maximumBitsForDensityLevel=$totalDataCount] - '
+          'Try increasing the Information Density parameter value or use 0 (zero) to automatically '
+          'compute the least amount needed to fit the QRCode data being encoded.',
+        );
+      }
+      assert(() {
+        debugPrint(
+          'cute_qr_code: informationDensity $requestedType is too small for the data; '
+          'upgraded to $minType.',
+        );
+        return true;
+      }());
+      return minType;
+    }
+
+    return requestedType;
+  }
+
+  static bool _fitsInType(
+    QrData qrCodeData,
+    int typeNum,
+    ErrorCorrectionLevel errorCorrectionLevel,
+  ) {
+    final rsBlocks = RsBlock.getRsBlocks(typeNum, errorCorrectionLevel);
+    final buffer = _buildDataBuffer(qrCodeData, typeNum);
+    final totalDataCount = rsBlocks.fold<int>(0, (sum, b) => sum + b.dataCount) * 8;
+    return buffer.lengthInBits <= totalDataCount;
+  }
+
+  static BitBuffer _buildDataBuffer(QrData qrCodeData, int typeNum) {
+    final buffer = BitBuffer();
+    buffer.putNum(qrCodeData.dataType.value, 4);
+    buffer.putNum(qrCodeData.length(), qrCodeData.getLengthInBits(typeNum));
+    qrCodeData.write(buffer);
+    return buffer;
   }
 
   int computeImageSizeFromRawData({int cellSize = defaultCellSize, QrCodeRawData? rawData}) =>
@@ -124,7 +206,7 @@ class QrCodeProcessor {
   }
 
   QrCodeRawData encode({int? type, MaskPattern maskPattern = MaskPattern.pattern000}) {
-    final resolvedType = type ?? infoDensityForDataAndEcl(_data, errorCorrectionLevel, dataType);
+    final resolvedType = type ?? minTypeForData(_data, errorCorrectionLevel, dataType);
     final moduleCount = resolvedType * 4 + 17;
     final modules = List.generate(
       moduleCount,
@@ -155,11 +237,7 @@ class QrCodeProcessor {
 
   List<int> _createData(int type) {
     final rsBlocks = RsBlock.getRsBlocks(type, errorCorrectionLevel);
-    final buffer = BitBuffer();
-
-    buffer.putNum(_qrCodeData.dataType.value, 4);
-    buffer.putNum(_qrCodeData.length(), _qrCodeData.getLengthInBits(type));
-    _qrCodeData.write(buffer);
+    final buffer = _buildDataBuffer(_qrCodeData, type);
 
     final totalDataCount = rsBlocks.fold<int>(0, (sum, b) => sum + b.dataCount) * 8;
 

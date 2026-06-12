@@ -1,7 +1,9 @@
-import '../raw/qr_code_enums.dart';
+import 'qr_code_enums.dart';
 import 'qr_code_square.dart';
 import 'qr_util.dart';
 
+/// Places finder patterns, timing, format info, and mask on the module grid.
+/// 在模块网格上放置定位图案、时序、格式信息与掩码。
 class QrCodeSetup {
   QrCodeSetup._();
 

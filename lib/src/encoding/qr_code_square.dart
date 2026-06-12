@@ -1,5 +1,21 @@
-enum QrCodeSquareType { positionProbe, positionAdjust, timingPattern, defaultType }
+/// Functional role of a module in the QR symbol.
+/// QR 符号中模块的功能角色。
+enum QrCodeSquareType {
+  /// Finder pattern module. 定位图案模块。
+  positionProbe,
 
+  /// Alignment pattern module. 对齐图案模块。
+  positionAdjust,
+
+  /// Timing pattern module. 时序图案模块。
+  timingPattern,
+
+  /// Data or format module. 数据或格式模块。
+  defaultType,
+}
+
+/// Region of the symbol for styling control patterns.
+/// 用于样式控制的功能区域。
 enum QrCodeRegion {
   topLeftCorner,
   topRightCorner,
@@ -14,6 +30,8 @@ enum QrCodeRegion {
   unknown,
 }
 
+/// Metadata attached to a [QrCodeSquare] module.
+/// 附在 [QrCodeSquare] 模块上的元数据。
 class QrCodeSquareInfo {
   const QrCodeSquareInfo(this.type, this.region);
 
@@ -21,6 +39,8 @@ class QrCodeSquareInfo {
   final QrCodeRegion region;
 }
 
+/// Single QR module (dark/light) with layout and render state.
+/// 单个 QR 模块（深/浅），含布局与渲染状态。
 class QrCodeSquare {
   QrCodeSquare({
     required this.dark,

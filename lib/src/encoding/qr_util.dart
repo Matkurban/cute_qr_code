@@ -1,7 +1,9 @@
-import '../raw/qr_code_enums.dart';
+import 'qr_code_enums.dart';
 import 'polynomial.dart';
 import 'qr_math.dart';
 
+/// QR specification tables and Galois-field utilities.
+/// QR 规范表与伽罗瓦域工具。
 class QrUtil {
   QrUtil._();
 
@@ -301,8 +303,8 @@ class QrUtil {
     return QrCodeDataType.defaultType;
   }
 
-  static bool _isNumber(String s) => RegExp(r'^\d+\$').hasMatch(s);
-  static bool _isAlphaNum(String s) => RegExp(r'^[0-9A-Z \$%*+\-./:]+\$').hasMatch(s);
+  static bool _isNumber(String s) => RegExp(r'^\d+$').hasMatch(s);
+  static bool _isAlphaNum(String s) => RegExp(r'^[0-9A-Z $%*+\-./:]+$').hasMatch(s);
 
   static const int _g15 =
       (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);

@@ -1,11 +1,13 @@
 import 'dart:ui';
 
+import '../../core/qr_code.dart';
+import '../../encoding/qr_code_square.dart';
+import '../../rendering/qr_code_graphics.dart';
 import '../color/qr_code_color_function.dart';
-import '../internals/qr_code_square.dart';
-import '../qr_code.dart';
-import '../render/qr_code_graphics.dart';
 import 'qr_code_shape_function.dart';
 
+/// Square modules with optional inner padding.
+/// 方形模块，可选内边距。
 class DefaultShapeFunction extends QrCodeShapeFunction {
   DefaultShapeFunction(this.squareSize, {int innerSpace = 1})
     : innerSpace = innerSpace,
